@@ -9,6 +9,7 @@
 
   ## Description
   This is a simple app to track employees, see departments, and roles. Add departments, employees and roles.
+  [!][video](https://drive.google.com/file/d/1bcOPzHevFiw-R1-MC4PDdllsAoFcXKvY/view)
   ## Installation
   To install run npm i
   ## Usage
