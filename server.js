@@ -45,7 +45,7 @@ const startP = ()=>{
                 addEmp();
                 break;
             case 'Add a role':
-                addRole();
+                addR();
                 break;
             case 'Update employee role':
                 upEmp();
@@ -180,6 +180,34 @@ function upEmp(){
             function (err) {
                 if(err) throw err
                 console.table(value)
+                startP();
+            })
+        });
+    });
+}
+
+function addR() {
+    db.query("SELECT role.title, role.salary FROM role", function(err,res){
+        inquirer.prompt([
+            {
+                message: 'Role title?',
+                type: 'input',
+                name: 'newTitle',
+            },
+            {
+                message: 'Salary?',
+                type: 'input',
+                name: 'pay',
+            },
+        ]).then(function(res){
+            db.query("INSERT INTO role SET ?", 
+            {
+                title: res.newTitle,
+                salary: res.pay,
+            },
+            function(err){
+                if(err) throw err
+                console.table(res);
                 startP();
             })
         });
