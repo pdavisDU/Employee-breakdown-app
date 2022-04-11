@@ -60,7 +60,7 @@ function viewEmp() {
     //this was giving me a major headache until stackoverflow
     function (err,res) {
         if (err)  throw err
-        onsole.table(res)
+        console.table(res)
         startP();
     })
 }
@@ -213,5 +213,25 @@ function addR() {
         });
     });
 }
-
+//need to be able to add department
+//addDept here
+function addDept(){
+    inquirer.prompt([
+        {
+            message: 'New department name?',
+            type: 'input',
+            name: 'dept',
+        }
+    ]).then(function(res){
+        var newDep = db.query("INSERT INTO department SET ? ",
+        {//kept forgetting to underscore here and that threw errors, always get the column correct
+            department_name: res.dept
+        },
+        function(err) {
+            if(err) throw err
+            console.table(res);
+            startP();
+        })
+    })
+}
 startP();
