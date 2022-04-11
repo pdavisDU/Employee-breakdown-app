@@ -17,142 +17,173 @@ const db = mysql.createConnection(
     console.log('Connected to the employees_db database')
 );
 
-const startPrompt = [
+const startP = ()=>{
+    inquirer.prompt([
         {
-            name: 'choices',
+            name: 'selection',
             message: 'What would you like to do?',
             type: 'list',
-            choices: ['View all departments', 'Add department', 'View all employees', 'Add employee', 'View all roles', 'Add a role', 'Update employee role', 'Quit',
-        ],
-        },
-    ];
-
-
-function choose() {
-    inquirer.prompt(startPrompt).then((data)=> {
-        switch (data.choice) {
+            choices: [
+                    'View all departments', 'Add department', 'View all employees', 'Add employee', 'View all roles', 'Add a role', 'Update employee role'
+            ],
+        }
+    ]).then(function(value){
+        switch (value.selection) {
             case 'View all departments':
-                viewDep();
-                break;
-            case 'Add department':
-                addDep();
+                viewDept();
                 break;
             case 'View all employees':
                 viewEmp();
                 break;
-            case 'Add employee':
-                addEmp();
-                break;
             case 'View all roles':
                 viewRole();
+                break;
+            case 'Add department':
+                addDept();
+                break;
+            case 'Add employee':
+                addEmp();
                 break;
             case 'Add a role':
                 addRole();
                 break;
             case 'Update employee role':
-                updateRole();
+                upEmp();
                 break;
-            case 'Quit':
-                return;
-
         }
-    });
+    })
 };
 
-
-function viewDep () {
-    db.query('SELECT * FROM department', (err,data)=> {
-        console.table(data);
-        choose();
-    });
-};
-
-function addDep () {
-    db.query(`INSERT INTO department (id, department_name) VALUES ('${data}')`, (err, data)=> {
-        console.log(data);
-        console.log(err);
-        choose();
-    });
-};
-
-function viewEmp () {
-    db.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name, role.salary,CONCAT(e.first_name, ' ' ,e.last_name) AS Manager FROM employee JOIN role ON role.id = employee.role_id JOIN department ON department.id = role.department_id LEFT JOIN employee e on employee.manager_id = e.id",
-    (err, data) => {
-        console.table(data);
-        console.table(err);
-        choose();
-    }
-  );
+function viewEmp() {
+    db.query("SELECT employee.first_name, employee.last_name, role.title, role.salary, department.department_name, CONCAT(employee.first_name, ' ',employee.last_name) AS Manager FROM employee INNER JOIN role on role.id = employee.role_id INNER JOIN department ON department.id = role.department_id left JOIN employee e ON employee.manager_id = e.id",
+    //have to use employee on e as the employee isnt a unique alias
+    //this was giving me a major headache until stackoverflow
+    function (err,res) {
+        if (err)  throw err
+        onsole.table(res)
+        startP();
+    })
 }
 
-function addEmp() {
+function viewRole() {
+    db.query("SELECT employee.first_name, employee.last_name, role.title FROM employee JOIN role ON employee.role_id = role.id",
+    function (err,res) {
+        if(err) throw err
+        console.table(res)
+        startP();
+    })
+}
+
+function viewDept() {
+    db.query("SELECT employee.first_name, employee.last_name, department.department_name FROM employee JOIN role ON employee.role_id = role.id JOIN department ON role.department_id = department.id ORDER BY employee.id",
+    function (err,res) {
+        if (err) throw err
+        console.table(res)
+        startP();
+    })
+}
+
+var rolSet =[];
+function rolChoice(){
+    db.query("SELECT * FROM role", 
+    function (err,res) {
+        if(err) throw err
+        for (var i = 0; i < res.length; i++) {
+            rolSet.push(res[i].title);
+        }
+    })
+    return rolSet;
+}
+
+var mgA=[];
+function mgChoice(){
+    db.query("SELECT first_name, last_name FROM employee WHERE manager_id IS NULL", function(err,res){
+        if(err) throw err
+        for (var i=0; i<res.length; i++){
+            mgA.push(res[i].first_name);
+        }
+    })
+    return mgA;
+}
+function addEmp(){
     inquirer.prompt([
         {
-            name: "First",
-            type: "input",
-            message: "What is the employees first name?",
+            type: 'input',
+            name: 'first',
+            message: 'First name'
         },
         {
-            name: "Last",
-            type: "input",
-            message: "What is the employees last name?",
+            type: 'input',
+            name: 'last',
+            message: 'Last name'
         },
         {
-            name: "mgmt",
-            type: "input",
-            message: "What is the manager ID?",
+            type: 'list',
+            name: 'role',
+            message: 'Role',
+            choices: rolChoice()
         },
         {
-            name: "Role",
-            type: "input",
-            message: "What is the role for the employee?",
+            type: 'rawlist',
+            name: 'mgmt',
+            message: 'Manager name',
+            choices: mgChoice()
         },
-    ])
-    .then((answer)=>{
-        db.query( `INSERT INTO employee VALUES (default, "${answer.First}", "${answer.last}", "${answer.mgmt}", "${answer.Role}")`);
-       choose();
+    ]).then(function(value){
+        var rId = rolChoice().indexOf(value.selection) + 1
+        var mId = mgChoice().indexOf(value.selection) + 1
+        db.query("INSERT INTO employee SET ?",{
+            first_name: value.first,
+            last_name: value.last,
+            manager_id: mId,
+            role_id: rId
+        }, function(err){
+            if(err) throw err
+            console.table(value)
+            startP()
+        })
+    })
+}
+
+function upEmp(){
+    db.query("SELECT employee.last_name, role.title FROM employee JOIN role ON employee.role_id = role.id;", function(err,res){
+        if(err) throw err
+        console.log(res)
+        inquirer.prompt([
+            {
+                name: 'last',
+                type: 'rawlist',
+                choices: function(){
+                    var last =[];
+                    for (var i=0; i< res.length; i++) {
+                        last.push(res[i].last_name);
+                    }
+                    return last
+                },
+                message: 'Last name?',
+            },
+            {
+                name: 'newRole',
+                message: 'New title',
+                type: 'rawlist',
+                choices: rolChoice()
+            },
+        ]).then(function(value){
+            var rId=rolChoice().indexOf(value.newRole) + 1
+            db.query("UPDATE employee SET WHERE ?", 
+            {
+                last_name: value.last
+            },
+            {
+                role_id: rId
+            },
+            function (err) {
+                if(err) throw err
+                console.table(value)
+                startP();
+            })
+        });
     });
 }
 
-function viewRole () {
-    db.query("SELECT role.title, role.id, department.department_name, role.salary JOIN department ON department.id = role.department_id",
-    (err, data) => {
-        console.table(data);
-        console.table(err);
-        choose();
-    }
-  );
-}
-
-
-function addRole () {
-inquirer.prompt([
-    {
-        name: "addedRole",
-        type: "input",
-        message: "What role do you want to add?",
-    },
-    {
-        name: "Department",
-        type: "input",
-        message: "What is the departments ID for this role?"
-    },
-    {
-        name: "Salary",
-        type: "input",
-        message: "What is the salary for this role?",
-    },
-])
-.then((answer)=>{
-    db.query(
-        `INSERT INTO role VALUES (default, "${answer.addedRole}", "${answer.Departnment}", "${answer.Salary}")`,
-        (err, res)=>{
-            console.log(err);
-            console.log(`${answer.addedRole}`);
-            choose();
-        }
-    );
-});
-
-}
-choose();
+startP();
